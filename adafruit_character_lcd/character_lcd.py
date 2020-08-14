@@ -48,7 +48,6 @@ Implementation Notes
 import time
 import digitalio
 from micropython import const
-import microcontroller
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_CharLCD.git"
@@ -190,6 +189,10 @@ class Character_LCD:
         self._message = None
         self._enable = None
         self._direction = None
+        
+        self.row = 0
+        self.column = 0
+        self._column_align = False
     # pylint: enable-msg=too-many-arguments
 
     def home(self):
@@ -262,9 +265,13 @@ class Character_LCD:
         # Clamp to last column of display
         if column >= self.columns:
             column = self.columns - 1
-        # Set location
+        # Move cursor; Changes Display RAM Address
         self._write8(_LCD_SETDDRAMADDR | (column + _LCD_ROW_OFFSETS[row]))
-
+        
+        # Save changes to class
+        self.row = row
+        self.column = column
+        
     @property
     def blink(self):
         """
@@ -352,7 +359,7 @@ class Character_LCD:
     @message.setter
     def message(self, message):
         self._message = message
-        line = 0
+        line = self.row
         # Track times through iteration, to act on the initial character of the message
         initial_character = 0
         # iterate through each character
@@ -361,7 +368,11 @@ class Character_LCD:
             if initial_character == 0:
                 # Start at (1, 1) unless direction is set right to left, in which case start
                 # on the opposite side of the display.
-                col = 0 if self.displaymode & _LCD_ENTRYLEFT > 0 else self.columns - 1
+                if self.displaymode & _LCD_ENTRYLEFT > 0:
+                    col = self.column
+                else:
+                    col = self.columns - 1 - self.columns
+
                 self.cursor_position(col, line)
                 initial_character += 1
             # If character is \n, go to next line
@@ -369,11 +380,21 @@ class Character_LCD:
                 line += 1
                 # Start the second line at (1, 1) unless direction is set right to left in which
                 # case start on the opposite side of the display.
-                col = 0 if self.displaymode & _LCD_ENTRYLEFT > 0 else self.columns - 1
+                if self.displaymode & _LCD_ENTRYLEFT > 0:
+                    col = self.column *self._column_align
+                else:
+                    if self._column_align:
+                        col = self.column
+                    else:
+                        col = self.columns -1
+                
                 self.cursor_position(col, line)
             # Write string to display
             else:
                 self._write8(ord(character), True)
+         
+        self.column = 0 
+        self.row = 0
 
     def move_left(self):
         """Moves displayed text left one column.
@@ -493,7 +514,7 @@ class Character_LCD:
         time.sleep(0.001)
         if self.interface:
             self.interface.send(value, _RS_DATA if char_mode else _RS_INSTRUCTION)
-            microcontroller.delay_us(50)
+            time.sleep(0.00005)
         else:
             #  set character/data bit. (charmode = False)
             self.reset.value = char_mode
