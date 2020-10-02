@@ -22,7 +22,7 @@
 
 import busio
 import board
-import microcontroller
+import time
 from adafruit_bus_device.i2c_device import I2CDevice
 from micropython import const
 
@@ -76,12 +76,12 @@ class pcf8574:
         """Pulse the `enable` flag to process value."""
         with self.i2c_device:
             self._i2c_write(value & ~PIN_ENABLE)
-            microcontroller.delay_us(1)
+            time.sleep(0.000001)
             self._i2c_write(value | PIN_ENABLE)
-            microcontroller.delay_us(1)
+            time.sleep(0.000001)
             self._i2c_write(value & ~PIN_ENABLE)
         # Wait for command to complete.
-        microcontroller.delay_us(100)
+        time.sleep(0.0001)
 
     def _i2c_write(self, value):
         self.data_buffer[0] = value

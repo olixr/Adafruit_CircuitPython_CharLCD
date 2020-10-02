@@ -73,7 +73,7 @@ class Character_LCD_I2C(Character_LCD_Mono):
         lines on the display. Optionally specify if backlight is inverted.
         """
         if usingPCF:
-            from pcf8574 import pcf8574
+            from adafruit_character_lcd.pcf8574 import pcf8574
             if address:
                 self.interface = pcf8574(i2c, const(address))
             else:
